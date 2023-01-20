@@ -2,6 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 
 from apps.galeria.models import Fotografia
 
+from apps.galeria.forms import FotografiaForms
+
 from django.contrib import messages
 
 def index(request):
@@ -27,5 +29,47 @@ def buscar(request):
         nome_a_buscar = request.GET['buscar']
         if nome_a_buscar:
             fotografias = fotografias.filter(nome__icontains=nome_a_buscar)
+
+    return render(request, "galeria/buscar.html", {"cards": fotografias})
+
+def nova_imagem(request):
+    if not request.user.is_authenticated:
+        messages.error(request, 'Usuário não logado')
+        return redirect('login')
+
+    form = FotografiaForms()
+    if request.method == 'POST':
+        form = FotografiaForms(request.POST, request.FILES)
+        if form.is_valid():
+            print(request.POST)
+            form.save()
+            messages.success(request, 'Nova fotografia cadastrada!')
+            return redirect('index')
+
+    return render(request, 'galeria/nova_imagem.html', {'form':form})
+
+def editar_imagem(request, foto_id):
+    fotografia = Fotografia.objects.get(id=foto_id)
+    form = FotografiaForms(instance=fotografia)
+
+    if request.method == 'POST':
+        form = FotografiaForms(request.POST, request.FILES, instance=fotografia)
+        if form.is_valid():
+            print(request.POST)
+            form.save()
+            messages.success(request, 'Fotografia editada')
+            return redirect('index')
+
+    return render(request, 'galeria/editar_imagem.html', {'form':form})
+
+def deletar_imagem(request, foto_id):
+    fotografia = Fotografia.objects.get(id=foto_id)
+    fotografia.delete()
+    messages.success(request, 'Fotografia deletada')
+    return redirect('index')
+
+def filtro(request, tag):
+    fotografias = Fotografia.objects.order_by("data_fotografia").filter(publicada=True)
+    fotografias = fotografias.filter(nome__icontains=tag)
 
     return render(request, "galeria/buscar.html", {"cards": fotografias})
